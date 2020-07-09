@@ -1,0 +1,23 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>qtquickcontrols2.conf</file>
+        <file>img/logo.jpg</file>
+        <file>img/success.png</file>
+        <file>img/userspix.png</file>
+        <file>img/exampics</file>
+        <file>pages/SplashScreen.qml</file>
+        <file>pages/SummaryPage.qml</file>
+        <file>pages/AdminPage.qml</file>
+        <file>pages/ExamPage.qml</file>
+        <file>logic/Database.js</file>
+        <file>pages/Notifier.qml</file>
+        <file>pages/SignUp.qml</file>
+        <file>pages/Login.qml</file>
+        <file>pages/SubjectsPage.qml</file>
+        <file>pages/QuestionSetupPage.qml</file>
+        <file>logic/Logistics.js</file>
+        <file>pages/SubjectModel.qml</file>
+        <file>pages/UserModel.qml</file>
+    </qresource>
+</RCC>

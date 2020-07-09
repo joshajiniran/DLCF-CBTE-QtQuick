@@ -1,0 +1,130 @@
+function dbInit() {
+    var db = LocalStorage.openDatabaseSync("cbteDB", "", "A CBTE app", 1000000);
+    
+    try {
+        db.transaction(function(tx) {
+            // Create database with tables Subjects and Users if it doesn't already exist
+            tx.executeSql(
+                        'CREATE TABLE IF NOT EXISTS Users(\
+user_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+firstname TEXT NOT NULL, 
+lastname TEXT NOT NULL,   
+gender CHARACTER(1) NOT NULL,
+passcode TEXT NOT NULL UNIQUE, 
+phone_num TEXT(11) NOT NULL UNIQUE,
+isAdmin BOOLEAN DEFAULT 0,
+timestamp not null default current_timestamp)');
+            
+            tx.executeSql('CREATE TABLE IF NOT EXISTS Subjects(\
+subject_id INTEGER PRIMARY KEY AUTOINCREMENT, 
+name TEXT NOT NULL UNIQUE, 
+no_of_questions INTEGER NOT NULL, 
+time_alloted TEXT NOT NULL,  
+created_by text references Users(user_id) 
+on delete restrict 
+deferrable initially deferred,
+time_created not null default current_timestamp)');
+            
+            tx.executeSql('create table if not exists Result(\
+result_id integer primary key autoincrement, 
+userId integer references Users(user_id) 
+on delete restrict
+deferrable initially deferred,
+subjectId integer references Subjects(subject_id) 
+on delete restrict 
+deferrable initially deferred, 
+timestamp not null default current_timestamp)');
+            
+            try {
+                // Add an administrator automatically
+                tx.executeSql("INSERT INTO Users VALUES (1, 'Super', 'Admin', 'M', 'admin@123', '08100000123', 1, current_timestamp)");
+                console.log("Admin successfully added")
+            } catch (err) {
+                console.log("Info: A superadmin already exist")
+            }
+        })
+    } catch (err) {
+        console.log("Error creating table in database: " + err)
+    }
+}
+
+function dbGetHandle() {
+    try {
+        var db = LocalStorage.openDatabaseSync("cbteDB", "", "A CBTE app", 1000000)
+    } catch (err) {
+        console.log("Error opening database: " + err)
+    }
+    
+    return db
+}
+
+function dbGetUsers() {
+    
+}
+
+function dbGetSubjects() {
+    var db = dbGetHandle();
+    db.transaction(function(tx) {
+        var res = tx.executeSql('select name from Subjects');
+        for (var i = 0; i < res.rows.length; i++) {
+            subjectModel.append({ name: res.rows.item(i).name })
+        }
+    });
+}
+
+function dbValidateUser(un, pc) {
+    var res;
+    var who;
+    var db = dbGetHandle()
+    db.transaction(function(tx) {
+        var results = tx.executeSql('SELECT * FROM Users WHERE lastname=? AND passcode=?', [un, pc])
+        if (results.rows.length > 0) {
+            if (results.rows.item(0).isAdmin) {
+                res = 0
+                who = results.rows.item(0).firstname + " " + results.rows.item(0).lastname
+            } else {
+                res = 1
+                who = results.rows.item(0).firstname + " " + results.rows.item(0).lastname
+            }
+        } else {
+            res = 2
+            who = ""
+        }
+    });
+    
+    return res
+    
+}
+
+function dbInsertSubject(sn, cb, nq, ta) {
+    var db = dbGetHandle()
+    db.transaction(function(tx) {
+        try {
+            tx.executeSql('insert into Subjects (name, created_by, no_of_questions, time_alloted) values(?, ?, ?, ?)', [sn, cb, nq, ta]);
+            console.log(('Successfully added subject'));
+        } catch (err) {
+            console.log(err);
+        }
+    });
+}
+
+function dbInsertUser(fn, ln, pc, gd, pn, ad) {
+    var db = dbGetHandle();
+    var last_row_id = 0;
+    db.transaction(function(tx) {
+        try {
+            tx.executeSql('INSERT INTO Users (firstname, lastname, passcode, gender, phone_num, isAdmin) VALUES(?, ?, ?, ?, ?, ?)', [fn, ln, pc, gd, pn, ad]);
+            console.log("Successfully added user");
+            view.currentIndex = 0;
+        } catch (err) {
+            console.log(err);
+        }
+    })
+}
+
+function dBDeleteUser(u_id) {
+    var db = dbGetHandle()
+    db.transaction(function(tx) {
+        var query = tx.executeSql('delete from Users where id=?', [u_id]) 
+    });
+}

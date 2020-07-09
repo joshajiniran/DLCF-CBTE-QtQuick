@@ -1,182 +1,109 @@
-import QtQuick 2.9
-import QtQuick.Controls 2.2
+import QtQuick 2.12
+import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.11
+import QtQuick.Controls.Material 2.2
+import QtQuick.Dialogs 1.2
+import QtQuick.LocalStorage 2.12
+
+import "../logic/Database.js" as DB
+import ".."
 
 Page {
     id: subjectsPage
-    ColumnLayout {
-        id: parentLayout
-        anchors.fill: parent
-        anchors.margins: 10
+    title: qsTr("Manage Subject")
+    
+    GroupBox {
+        id: subjectPane
+        title: "Manage subjects"
+        width: parent.width * 0.5
+        height: parent.height * 0.45
+        anchors.centerIn: parent
         
-        ComboBox {
-            id: subjectListCombo
-            editable: true
-            model: ListModel {
-                id: subjectModel
-                
-            }
-            Layout.alignment: Qt.AlignCenter
+        ColumnLayout {
+            id: parentLayout
+            anchors.fill: parent
+            anchors.margins: 10
             
-            onAccepted: {
-                if (find(editText) === -1)
-                    subjectModel.append({text: editText})
-            }
-        }
-        
-        TextField {
-            id: timeAllotedField
-            inputMask: "99:99"
-            horizontalAlignment: TextInput.AlignHCenter
-            Layout.alignment: Qt.AlignCenter
-        }
-        
-        GridView {
-            id: optionsViewer
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.margins: 20
-            Layout.alignment: Qt.AlignCenter
-            currentIndex: 0
-            cellHeight: 40
-            cellWidth: 40
-            model: 25
-            delegate: ItemDelegate {
-                text: index + 1
-                highlighted: GridView.isCurrentItem ? true : false
+            ComboBox {
+                id: subjectListCombo
+                editable: true
+                textRole: "title"
+                model: SubjectModel { id: subjectsModel }
+                Layout.alignment: Qt.AlignCenter
+                Layout.fillWidth: true
                 
-                onClicked: {
-                    GridView.view.currentIndex = index
+                onCurrentTextChanged: {
+                    DB.dbGetSubjectInfo(currentText)
                 }
             }
-        }
-        
-        GroupBox {
-            title: qsTr("Question, Options & Answer")
-            Layout.fillHeight: true
-            Layout.fillWidth: true
             
-            ColumnLayout {
-                anchors.fill: parent
-                
-                TextEdit {
+            RowLayout {
+                TextField {
+                    id: noQuestionsField
                     Layout.fillWidth: true
-                    onTextChanged: {
-                        questionArea.text = text
-                    }
+                    placeholderText: qsTr("Number of questions")
+                    onAccepted: optionsViewer.model = Number(text)
                 }
                 
-                TextArea {
-                    id: questionArea
-                    placeholderText: qsTr("Type question here")
-                    Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    Layout.columnSpan: 3
-                    textFormat: TextEdit.RichText
-                    color: "red"
-                    font.pixelSize: 18
-                }
-                
-                ComboBox {
-                    id: optionsCombo
-                    Layout.fillWidth: true
-                    editable: true
-                    model: optionsModel
-                    
-                    onAccepted: {
-                        if (find(editText) === -1) {
-                            optionsModel.append({optionsText: editText})
-                            optionsCombo.currentIndex = -1
-                            optionsCombo.editText = ""
-                        }
-                    }
-                }
-                
-                ButtonGroup {
-                    id: buttonGroup
-                }
-                
-                ListView {
-                    id: optionsView
-                    orientation: Qt.Horizontal
-                    Layout.preferredWidth: parent.width
-                    Layout.preferredHeight: 40
-                    model: optionsModel
-                    delegate: RadioDelegate {
-                        id: control
-                        text: modelData
-                        ButtonGroup.group: buttonGroup
-                        
-                        contentItem: Text {
-                            rightPadding: control.indicator.width + control.spacing
-                            text: control.text
-                            font: control.font
-                            opacity: enabled ? 1.0 : 0.3
-                            color: control.down ? "#17a81a" : "#21be2b"
-                            elide: Text.ElideRight
-                            verticalAlignment: Text.AlignVCenter
-                            textFormat: TextEdit.RichText
-                        }
-                        
-                        onPressAndHold: {
-                            // edit or delete
-                            optionsModel.remove(index)
-                        }
-                    }
+                TextField {
+                    id: timeAllotedField
+                    inputMask: "99:99"
+                    horizontalAlignment: Text.AlignHCenter
+                    Layout.preferredWidth: Layout.width - 30
                 }
             }
-        }
-        
-        RowLayout {
-            Layout.column: parentLayout.column + 1
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 10
             
-            Button {
-                id: previousButton
-                Layout.alignment: Qt.AlignLeft
-                text: qsTr("<")
-                font.pixelSize: 16
-                enabled: optionsViewer.currentIndex > 1 ? true : false
-                
-                onClicked: {
-                    
-                }
-            }
-            Button {
-                id: nextButton
+            RowLayout {
                 Layout.alignment: Qt.AlignRight
-                text: qsTr(">")
-                font.pixelSize: 16
-                
-                onClicked: {
-                    // no field empty before attempting to save
-                    // function to save to database in form of JSON
-                    questionModel.append(
-                                { 
-                                    "number": optionsViewer.currentIndex + 1,
-                                    "question": questionArea.text,
-                                    "options": optionsModel,
-                                    "answer": buttonGroup.checkedButton.text
-                                }
-                                )
+                Button {
+                    id: submitBtn
+                    text: qsTr("Submit")
+                    Layout.preferredWidth: Layout.width * 0.4
+                    highlighted: true
                     
-                    optionsViewer.currentIndex += 1
+                    onClicked: {
+                        var res, query
+                        var db = DB.dbGetHandle()
+                        db.transaction(function(tx) {
+                            query = tx.executeSql('select * from Subjects where name=?', [subjectListCombo.editText])
+                            if (query.rows.length > 0) {
+                                DB.dbUpdateSubject(noQuestionsField.text, timeAllotedField.text, subjectListCombo.editText)
+                                stackView.push("qrc:/pages/QuestionSetupPage.qml", 
+                                               {
+                                                   "subjectEdited": subjectListCombo.editText,
+                                                   "noQuestion": noQuestionsField.text
+                                               })
+                            } else {
+                                DB.dbCreateSubject(subjectListCombo.editText, noQuestionsField.text, timeAllotedField.text)
+                                DB.dbGetSubjects()
+                                stackView.push("qrc:/pages/QuestionSetupPage.qml", 
+                                               {
+                                                   "subjectEdited": subjectListCombo.editText,
+                                                   "noQuestion": noQuestionsField.text
+                                               })
+                            }
+                        })
+                    }
+                }
+                
+                Button {
+                    id: deleteBtn
+                    text: qsTr("Remove")
+                    Layout.preferredWidth: Layout.width * 0.4
+                    highlighted: true
+                    
+                    onClicked: {
+                        if (subjectListCombo.displayText !== "" && noQuestionsField.text !== ""
+                                && timeAllotedField.text !== "") {
+                            DB.dbDeleteSubject(subjectListCombo.displayText)
+                            subjectModel.clear()
+                            noQuestionsField.clear()
+                            timeAllotedField.clear()
+                            DB.dbGetSubjects()
+                        }
+                    }
                 }
             }
         }
-        
-    }
-    
-    Page {
-        id: usersPage
-        title: "Manage Users"
-        
-        
-    }
-    
-    Page {
-        id: profilePage
-        title: "Admin Profile"
     }
 }

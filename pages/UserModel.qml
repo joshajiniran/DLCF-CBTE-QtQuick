@@ -5,9 +5,9 @@ import QtQuick.LocalStorage 2.0
 import "../logic/Database.js" as JS
 
 ListModel {
-    id: subjectsModel
+    id: usersModel
     
     Component.onCompleted: {
-        JS.dbGetSubjects()
+        JS.dbGetUsers()
     }
 }
